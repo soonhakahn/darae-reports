@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#1e3a8a" />
+  <title>Darae Reports</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <style>
+    :root { --bg:#0b1220; --card:#111a2e; --muted:#9fb0d0; --txt:#e9eefc; --accent:#60a5fa; --accent2:#34d399; }
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(135deg,#0b1220,#0e1b3c);color:var(--txt)}
+    .wrap{max-width:720px;margin:0 auto;padding:18px}
+    .hero{background:linear-gradient(135deg,#0f172a,#1e3a8a);border-radius:18px;padding:16px 16px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .hero h1{margin:0 0 6px;font-size:22px}
+    .hero p{margin:0;color:rgba(255,255,255,.8);font-size:13px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .btn{appearance:none;border:0;border-radius:14px;padding:12px 14px;background:rgba(255,255,255,.08);color:var(--txt);font-weight:600;cursor:pointer}
+    .btn.primary{background:rgba(96,165,250,.22);}
+    .btn.green{background:rgba(52,211,153,.18)}
+    .btn:active{transform:scale(.99)}
+    .card{margin-top:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px}
+    textarea{width:100%;min-height:96px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:var(--txt);padding:12px;box-sizing:border-box}
+    pre{white-space:pre-wrap;word-break:break-word;margin:0;color:var(--txt);font-size:13px;line-height:1.45}
+    .meta{margin-top:8px;color:var(--muted);font-size:12px}
+    a{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>Darae Reports</h1>
+      <p>Safari에서 보고, 필요하면 홈 화면에 추가해서 앱처럼 사용하세요. (0원)</p>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <button class="btn primary" id="btnUs2kr">US→KR 최신 불러오기</button>
+        <button class="btn primary" id="btnBrief">시장 브리핑 최신 불러오기</button>
+        <button class="btn" id="btnStop">읽기 중단</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn green" id="btnSpeak">TTS로 읽기</button>
+        <button class="btn" id="btnCopy">복사</button>
+      </div>
+      <div class="meta" id="status">대기 중</div>
+      <div style="margin-top:10px"><pre id="out">(내용 없음)</pre></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px;font-size:16px">장중 업데이트 요청(텔레그램)</h3>
+      <textarea id="req" placeholder="예) 코스피/코스닥, 원달러, 반도체 중심으로 5줄 요약 부탁"></textarea>
+      <div class="row">
+        <button class="btn" data-preset="코스피/코스닥, 원달러, 반도체(삼성전자/하이닉스) 중심으로 5줄 요약 부탁.">기본</button>
+        <button class="btn" data-preset="반도체(삼성전자/하이닉스) 수급/흐름 + SOXX/NVDA 영향 5줄.">반도체</button>
+        <button class="btn" data-preset="코스피/코스닥 지수 흐름, 주도 테마, 상위 대형주 체크 5줄.">지수</button>
+        <button class="btn" id="btnClear">비우기</button>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="btnTg">Telegram 열기</button>
+      </div>
+      <div class="meta">팁: 공유 → 홈 화면에 추가하면 앱처럼 실행됩니다.</div>
+    </div>
+
+    <div class="meta">
+      소스: <a href="https://github.com/soonhakahn/darae-reports" target="_blank" rel="noreferrer">darae-reports</a>
+    </div>
+  </div>
+
+  <script>
+    const RAW_BASE = 'https://raw.githubusercontent.com/soonhakahn/darae-reports/main';
+    const URL_US2KR = RAW_BASE + '/reports/us2kr/latest.md';
+    const URL_BRIEF = RAW_BASE + '/reports/market-brief/latest.md';
+
+    const out = document.getElementById('out');
+    const status = document.getElementById('status');
+    let lastText = '';
+    let utter = null;
+
+    async function fetchText(url){
+      status.textContent = '불러오는 중…';
+      const res = await fetch(url, {cache:'no-store'});
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const txt = await res.text();
+      status.textContent = '완료 (' + new Date().toLocaleString() + ')';
+      return txt;
+    }
+
+    function stopSpeak(){
+      if('speechSynthesis' in window) window.speechSynthesis.cancel();
+      utter = null;
+      status.textContent = '읽기 중단';
+    }
+
+    function speak(txt){
+      stopSpeak();
+      if(!('speechSynthesis' in window)) { status.textContent = '이 기기에서는 TTS 미지원'; return; }
+      utter = new SpeechSynthesisUtterance(txt.slice(0, 4000));
+      utter.lang = /[가-힣]/.test(txt) ? 'ko-KR' : 'en-US';
+      utter.rate = 1.0;
+      window.speechSynthesis.speak(utter);
+      status.textContent = '읽는 중…';
+    }
+
+    document.getElementById('btnUs2kr').onclick = async ()=>{
+      try{ lastText = await fetchText(URL_US2KR); out.textContent = lastText || '(비어있음)'; }
+      catch(e){ status.textContent = '실패: ' + e.message; }
+    };
+    document.getElementById('btnBrief').onclick = async ()=>{
+      try{ lastText = await fetchText(URL_BRIEF); out.textContent = lastText || '(비어있음)'; }
+      catch(e){ status.textContent = '실패: ' + e.message; }
+    };
+    document.getElementById('btnStop').onclick = stopSpeak;
+    document.getElementById('btnSpeak').onclick = ()=> speak(lastText || out.textContent);
+    document.getElementById('btnCopy').onclick = async ()=>{
+      try{ await navigator.clipboard.writeText(lastText || out.textContent); status.textContent='복사됨'; }
+      catch(e){ status.textContent='복사 실패'; }
+    };
+
+    const req = document.getElementById('req');
+    document.querySelectorAll('[data-preset]').forEach(b=> b.onclick = ()=>{ req.value = b.dataset.preset; });
+    document.getElementById('btnClear').onclick = ()=> req.value = '';
+
+    document.getElementById('btnTg').onclick = ()=>{
+      const msg = (req.value || '').trim();
+      const text = msg ? ('다래 장중 업데이트 요청: ' + msg) : '다래 장중 업데이트 요청';
+      const url = 'https://t.me/share/url?text=' + encodeURIComponent(text);
+      window.open(url, '_blank');
+    };
+  </script>
+</body>
+</html>
