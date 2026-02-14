@@ -36,6 +36,7 @@
       <div class="row">
         <button class="btn primary" id="btnUs2kr">US→KR 최신 불러오기</button>
         <button class="btn primary" id="btnBrief">시장 브리핑 최신 불러오기</button>
+        <button class="btn primary" id="btnYt">YouTube 목록 요약</button>
         <button class="btn" id="btnStop">읽기 중단</button>
         <button class="btn" id="btnClearOut">비우기</button>
       </div>
@@ -72,6 +73,7 @@
     const RAW_BASE = 'https://raw.githubusercontent.com/soonhakahn/darae-reports/main';
     const URL_US2KR = RAW_BASE + '/reports/us2kr/latest.md';
     const URL_BRIEF = RAW_BASE + '/reports/market-brief/latest.md';
+    const URL_YT = RAW_BASE + '/reports/youtube/playlists.md';
 
     const out = document.getElementById('out');
     const status = document.getElementById('status');
@@ -109,6 +111,10 @@
     };
     document.getElementById('btnBrief').onclick = async ()=>{
       try{ lastText = await fetchText(URL_BRIEF); out.textContent = lastText || '(비어있음)'; }
+      catch(e){ status.textContent = '실패: ' + e.message; }
+    };
+    document.getElementById('btnYt').onclick = async ()=>{
+      try{ lastText = await fetchText(URL_YT); out.textContent = lastText || '(비어있음)'; }
       catch(e){ status.textContent = '실패: ' + e.message; }
     };
     document.getElementById('btnStop').onclick = stopSpeak;
