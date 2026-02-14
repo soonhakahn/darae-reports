@@ -56,9 +56,10 @@
         <button class="btn" id="btnClear">비우기</button>
       </div>
       <div class="row">
+        <button class="btn" id="btnCopyReq">요청 문구 복사</button>
         <button class="btn primary" id="btnTg">Telegram 열기</button>
       </div>
-      <div class="meta">팁: 공유 → 홈 화면에 추가하면 앱처럼 실행됩니다.</div>
+      <div class="meta">팁: iOS에서 텔레그램이 웹(telegram.org)로 뜨면 상단 <b>Open</b> 눌러 앱으로 이동 후 붙여넣기 하시면 됩니다.</div>
     </div>
 
     <div class="meta">
@@ -120,20 +121,29 @@
     document.querySelectorAll('[data-preset]').forEach(b=> b.onclick = ()=>{ req.value = b.dataset.preset; });
     document.getElementById('btnClear').onclick = ()=> req.value = '';
 
-    document.getElementById('btnTg').onclick = async ()=>{
+    async function buildReqText(){
       const msg = (req.value || '').trim();
-      const text = msg ? ('다래 장중 업데이트 요청: ' + msg) : '다래 장중 업데이트 요청';
+      return msg ? ('다래 장중 업데이트 요청: ' + msg) : '다래 장중 업데이트 요청';
+    }
 
-      // 1) Try Telegram deep link first (iOS sometimes sends https://t.me/... to App Store).
+    document.getElementById('btnCopyReq').onclick = async ()=>{
+      const text = await buildReqText();
+      try { await navigator.clipboard.writeText(text); status.textContent = '요청 문구 복사됨'; }
+      catch(e) { status.textContent = '복사 실패'; }
+    };
+
+    document.getElementById('btnTg').onclick = async ()=>{
+      const text = await buildReqText();
+
+      // Always copy first (most reliable on iOS).
+      try { await navigator.clipboard.writeText(text); status.textContent = '요청 문구 복사됨 · Telegram 열기 시도…'; }
+      catch(e) { /* ignore */ }
+
+      // 1) Try Telegram deep link first.
       const tgUrl = 'tg://msg?text=' + encodeURIComponent(text);
 
       // 2) Fallback to web share.
-      // Use Telegram share endpoint with explicit url parameter to avoid redirects to telegram.org.
       const webUrl = 'https://t.me/share/url?url=&text=' + encodeURIComponent(text);
-
-      // 3) Always offer copy as the most reliable path.
-      try { await navigator.clipboard.writeText(text); status.textContent = '요청 문구 복사됨 (Telegram 열기 시도 중)'; }
-      catch(e) { /* ignore */ }
 
       // Prefer same-tab navigation for better iOS app handoff.
       location.href = tgUrl;
