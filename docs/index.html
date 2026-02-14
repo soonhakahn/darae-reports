@@ -128,7 +128,8 @@
       const tgUrl = 'tg://msg?text=' + encodeURIComponent(text);
 
       // 2) Fallback to web share.
-      const webUrl = 'https://t.me/share/url?text=' + encodeURIComponent(text);
+      // Use Telegram share endpoint with explicit url parameter to avoid redirects to telegram.org.
+      const webUrl = 'https://t.me/share/url?url=&text=' + encodeURIComponent(text);
 
       // 3) Always offer copy as the most reliable path.
       try { await navigator.clipboard.writeText(text); status.textContent = '요청 문구 복사됨 (Telegram 열기 시도 중)'; }
